@@ -89,8 +89,8 @@ Y1.pred <- dist.match.trans.learn(target.set = list("X" = X1, "y" = Y1),
 
 ## Baseline model...
 # set.seed(0)
-RF.base <- randomForest(x = X2n, y = Y2, ntree = 200)
-Y1.pred.base <- predict(RF.base, X1n)
+RF.base <- randomForest(x = dapply(X2, MARGIN = 2, norm01), y = Y2, ntree = 200)
+Y1.pred.base <- predict(RF.base, dapply(X1, MARGIN = 2, norm01))
 Y1.pred.base[Y1.pred.base < 0] <- 0;    Y1.pred.base[Y1.pred.base > 1] <- 1
 
 

@@ -160,6 +160,31 @@ figure(hb(1)),           suptitle([{'\bfBiomarker Distributions for {\color[rgb]
 figure(hb(2)),          suptitle([{'\bfBiomarker Distributions for {\color[rgb]{0.5,0,0}All} CLs'}; {defn}])
 
 
+%% Save data...
+XdataTable1 = array2table(Xdata1, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', samples1);
+XdataTable2 = array2table(Xdata2, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', brCL2);
+XdataTable3 = array2table(Xdata3, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', brCL3);
+
+YdataTable1 = array2table(Ydata1, 'VariableNames', biomarkers, 'RowNames', samples1);
+YdataTable2 = array2table(Ydata2, 'VariableNames', biomarkers, 'RowNames', brCL2);
+YdataTable3 = array2table(Ydata3, 'VariableNames', biomarkers, 'RowNames', brCL3);
+
+SavePath = '.\\DataProcessed\\BRCA_MCG\\';
+writetable(XdataTable1, sprintf([SavePath, 'BRCA_gene_expression_METABRIC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(XdataTable2, sprintf([SavePath, 'BRCA_gene_expression_CCLE_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(XdataTable3, sprintf([SavePath, 'BRCA_gene_expression_GDSC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable1, sprintf([SavePath, 'BRCA_biomarker_expression_METABRIC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable2, sprintf([SavePath, 'BRCA_biomarker_expression_CCLE_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable3, sprintf([SavePath, 'BRCA_biomarker_expression_GDSC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+
+
+
 %% Housekeeping Gene Data...
 HKGtab = readtable('HKG_list.csv');
 nHKG = HKGtab.nHKG;             nHKG(cellfun(@isempty, nHKG)) = [ ];
@@ -500,6 +525,15 @@ FEATFILENAME = sprintf('relieff_ranked_genes_MCG_v2_bm%d.mat', bmChoice);
 save(FEATFILENAME, 'rank1', 'rank2', 'rank3', 'rank2tot', 'rank3tot')
 toc
 
+% Save files... 
+SavePath = '.\\DataProcessed\\BRCA_MCG\\';
+WriteTableForRanks = @(RankArray, FileName) writetable(array2table(RankArray, 'VariableNames', biomarkers,... 
+                                         'RowNames', XgeneSet.Hugo_Symbol), [SavePath, FileName],... 
+                                         'Delimiter', '\t', 'WriteVariableNames', true, 'WriteRowNames', true);
+WriteTableForRanks(rank1, sprintf('BRCA_biomarker_ranks_METABRIC_%s.txt', strrep(date, '-', '_')))
+WriteTableForRanks(rank2, sprintf('BRCA_biomarker_ranks_CCLE_%s.txt', strrep(date, '-', '_')))
+WriteTableForRanks(rank3, sprintf('BRCA_biomarker_ranks_GDSC_%s.txt', strrep(date, '-', '_')))
+
 
 %% Pairwise Dependency - Top Genes...
 % Load RELIEFF ranking...
@@ -830,7 +864,7 @@ FEATFILENAME = sprintf('relieff_ranked_genes_MCG_v2_bm%d.mat', bmChoice);
 load(FEATFILENAME, 'rank1', 'rank2', 'rank3', 'rank2tot', 'rank3tot')
 
 % Metric function definitions...
-norm01 = @(x) (x - min(ones(size(x, 1), 1) * min(x, [ ], 1))) ./ (ones(size(x, 1), 1) * range(x, 1));       % Normalize in [0, 1]
+norm01 = @(x) (x - (ones(size(x, 1), 1) * min(x, [ ], 1))) ./ (ones(size(x, 1), 1) * range(x, 1));       % Normalize in [0, 1]
 NMAE = @(y, y_hat) mean(abs(y - y_hat)) / mean(abs(y - mean(y)));
 NRMSE = @(y, y_hat) sqrt(mean((y - y_hat).^2)) / std(y, 1);
 
@@ -838,13 +872,13 @@ fprintf(2, 'Tumor cultures to cell line data Transfer Learning...\n')
 PredApp = {'DMTL', 'DMTL_SS', 'CATL', 'BL'};
 RESULTS = array2table(zeros(q+1, numel(PredApp)), 'RowNames', [biomarkers; {'Mean'}], 'VariableNames', PredApp);
 RESULTS = struct('NRMSE', RESULTS, 'NMAE', RESULTS, 'SCC', RESULTS, 'numFeat', zeros(q+1, 1));
-for chosenBMidx = 1 : q
+for chosenBMidx = 6
     %%% Feature selection...
     fprintf(1, 'Chosen biomarker = '),       fprintf(2, '%s\n', biomarkers{chosenBMidx})
     ranks = [rank1(:, chosenBMidx), rank2(:, chosenBMidx), rank3(:, chosenBMidx)];
     
 %     fprintf(1, 'Extracting common CL features...\n')                    % Extracting a common set of size m_opt
-    nGN = 300;                  m_opt = 150;        gnRank = intersectn(ranks(1:nGN, 2), ranks(1:nGN, 3), 'sorted');
+    nGN = 300;                  m_opt = 100;        gnRank = intersectn(ranks(1:nGN, 2), ranks(1:nGN, 3), 'sorted');
     m = numel(gnRank);       nI = 0;                 m0 = m;
     while m < m_opt
         nI = nI + 1;               nGN = nGN + 100;
@@ -899,9 +933,9 @@ for chosenBMidx = 1 : q
                                         getenv('username'));
     if ~mod(dsChoice, 2),	 dsChar = {'_Rev', strrep(dsFlag{1}, ' + ', '_'), 'Target'};
     else,                              dsChar = {'', strrep(dsFlag{2}, ' + ', '_'), 'Source'};        end
-    datadir = sprintf('BRCA_%s_%s', dsChar{3}, dsChar{2});
-    filename = sprintf('Data_BM_%d_f%d_%s%s.mat', chosenBMidx, m_opt, dsChar{2}, dsChar{1});
-    save(fullfile(datapath, datadir, filename), 'X1', 'X2', 'Y1', 'Y2')
+%     datadir = sprintf('BRCA_%s_%s', dsChar{3}, dsChar{2});
+%     filename = sprintf('Data_BM_%d_f%d_%s%s.mat', chosenBMidx, m_opt, dsChar{2}, dsChar{1});
+%     save(fullfile(datapath, datadir, filename), 'X1', 'X2', 'Y1', 'Y2')
     
     % Distributions...
     figure(31),                        clf
@@ -977,7 +1011,7 @@ for chosenBMidx = 1 : q
     %%%
     
     %%% Baseline model prediction...
-    TrainX = zscore(X2);        TrainY = Y2;       TestX = zscore(X1);
+    TrainX = norm01(X2);        TrainY = Y2;       TestX = norm01(X1);
     rng(0);                              nTree = 200;       RF = TreeBagger(nTree, TrainX, TrainY, 'method', 'regression');
     PredY = predict(RF, TestX);                         Y1b = PredY;        %Y1b(Y1b < 0) = 0;           Y1b(Y1b > 1) = 1;
     
@@ -1041,19 +1075,19 @@ for chosenBMidx = 1 : q
     RESULTS.NRMSE{chosenBMidx, :} = ERR.Table{1, :};        RESULTS.NMAE{chosenBMidx, :} = ERR.Table{2, :};
     RESULTS.SCC{chosenBMidx, :} = ERR.Table{3, :};             RESULTS.numFeat(chosenBMidx) = m;
     
-%     fprintf('\n')
-%     disp(array2table(round([RESULTS.NRMSE{chosenBMidx, :}; RESULTS.NMAE{chosenBMidx, :};... 
-%                                             RESULTS.SCC{chosenBMidx, :}], 4), 'RowNames', {'NRMSE', 'NMAE', 'SCC'},... 
-%                                             'VariableNames', PredApp))
+    fprintf('\n')
+    disp(array2table(round([RESULTS.NRMSE{chosenBMidx, :}; RESULTS.NMAE{chosenBMidx, :};... 
+                                            RESULTS.SCC{chosenBMidx, :}], 4), 'RowNames', {'NRMSE', 'NMAE', 'SCC'},... 
+                                            'VariableNames', PredApp))
 end
 RESULTS.NRMSE{end, :} = mean(RESULTS.NRMSE{1:q, :}, 1);
 RESULTS.NMAE{end, :} = mean(RESULTS.NMAE{1:q, :}, 1);
 RESULTS.SCC{end, :} = mean(RESULTS.SCC{1:q, :}, 1);
 RESULTS.numFeat(end) = mean(RESULTS.numFeat(1:q));
 
-fprintf(2, 'Mean performance over %d biomarkers...\n', q)
-fprintf(1, '\tm_opt = %d, m_avg = %d\n', m_opt, round(RESULTS.numFeat(end)))
-RESULTS.summary = array2table(round([RESULTS.NRMSE{end, :}; RESULTS.NMAE{end, :}; RESULTS.SCC{end, :}], 4),...
-                                                            'RowNames', {'NRMSE', 'NMAE', 'SCC'}, 'VariableNames', PredApp);
-disp(RESULTS.summary)
+% fprintf(2, 'Mean performance over %d biomarkers...\n', q)
+% fprintf(1, '\tm_opt = %d, m_avg = %d\n', m_opt, round(RESULTS.numFeat(end)))
+% RESULTS.summary = array2table(round([RESULTS.NRMSE{end, :}; RESULTS.NMAE{end, :}; RESULTS.SCC{end, :}], 4),...
+%                                                             'RowNames', {'NRMSE', 'NMAE', 'SCC'}, 'VariableNames', PredApp);
+% disp(RESULTS.summary)
 
