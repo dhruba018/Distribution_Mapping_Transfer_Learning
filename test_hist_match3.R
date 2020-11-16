@@ -84,7 +84,7 @@ Y1 <- norm01(Ydata1[, bmChosen]);     Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[
 ## DMTL model...
 source("dist.match.trans.learn.R")
 Y1.pred <- dist.match.trans.learn(target.set = list("X" = X1, "y" = Y1), 
-                                  source.set = list("X" = X2, "y" = Y2))
+                                  source.set = list("X" = X2, "y" = Y2), seed = NULL)
 
 
 ## Baseline model...

@@ -60,7 +60,7 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     RF.prediction <- function(X.train, y.train, X.test, n.tree = 200, random.seed = seed, ...) {
         ## Set up model...
         require(randomForest)               # Load package
-        if (!is.null(random.seed)) {
+        if (!(is.null(random.seed))) {
             set.seed(seed = random.seed)    # For reproducibility
         }
         
@@ -85,13 +85,8 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     X2.map <- as.data.frame(X2.map, col.names = colnames(X1), row.names = rownames(X1))
     
     ## Perform prediction & map back to original space...
-    RF <- randomForest(x = X2, y = y2, ntree = 200, mtry = 5, replace = TRUE)
-    y2.pred.map <- predict(RF, X2.map)
-    y2.pred.map[y2.pred.map < 0] <- 0;      y2.pred.map[y2.pred.map > 1] <- 1
-    # y2.pred.map <- RF.prediction(X.train = X2, y.train = y2, X.test = X2.map, n.tree = 200)
-    
-    y1.cdf <- get.cum.dist(y1, sample.size = size, dist.method = method)
-    y2.cdf <- get.cum.dist(y2, sample.size = size, dist.method = method)
-    y1.pred <- dist.match(y2.pred.map, src.cdf = y2.cdf, ref.cdf = y1.cdf, match.method = method, samp.size = size)
+    y2.pred.map <- RF.prediction(X.train = X2, y.train = y2, X.test = X2.map, n.tree = 200, random.seed = seed)
+    y1.pred <- dist.match(y2.pred.map, ref = y1, src.cdf = get.cum.dist(y2, sample.size = size, dist.method = method), 
+                          match.method = method, samp.size = size)
     
 }
