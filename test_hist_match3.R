@@ -61,8 +61,9 @@ rank2 <- read.table("Data/BRCA_biomarker_ranks_CCLE_27_Oct_2020.txt", sep = "\t"
 rank3 <- read.table("Data/BRCA_biomarker_ranks_GDSC_27_Oct_2020.txt", sep = "\t", header = TRUE)
 
 
+run <- function(k) {
 #### Get data for a biomarker...
-biomarkers <- colnames(Ydata1);       bmChosen <- biomarkers[6]
+biomarkers <- colnames(Ydata1);       bmChosen <- biomarkers[k]
 ranks <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
 printf("Chosen biomarker = %s", bmChosen)
 
@@ -79,12 +80,12 @@ printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
 
 X1 <- Xdata1[, gnRank];               X2 <- rbind(Xdata2[, gnRank], Xdata3[, gnRank])
 Y1 <- norm01(Ydata1[, bmChosen]);     Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[, bmChosen]))
+printf("Size of X1 = ", dim(X1), "\nSize of X2 = ", dim(X2))
 
 
 ## DMTL model...
 source("dist.match.trans.learn.R")
-Y1.pred <- dist.match.trans.learn(target.set = list("X" = X1, "y" = Y1), 
-                                  source.set = list("X" = X2, "y" = Y2), seed = NULL)
+Y1.pred <- dist.match.trans.learn(target.set = list(X = X1, y = Y1), source.set = list(X = X2, y = Y2), seed = NULL)
 
 
 ## Baseline model...
@@ -104,6 +105,10 @@ results <- data.frame("DMTL" = c(calc.err(Y1, Y1.pred, measure = "NRMSE"), calc.
                       row.names = c("NRMSE", "NMAE", "SCC"))
 
 printf("Results = \n");   print(results)
+}
+
+run(6)
+
 
 
 # ##
