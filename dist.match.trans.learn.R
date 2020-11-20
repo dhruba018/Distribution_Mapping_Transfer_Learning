@@ -1,4 +1,4 @@
-dist.match.trans.learn <- function(target.set, source.set, method = "hist", size = 1e3, seed = NULL){
+dist.match.trans.learn <- function(target.set, source.set, method = "hist", size = 1e3, seed = NULL, pred.opt = FALSE){
     
     ## Initial check...
     if (ncol(target.set[["X"]]) != ncol(source.set[["X"]]))
@@ -62,6 +62,11 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
         y.pred[y.pred < 0] <- 0;    y.pred[y.pred > 1] <- 1
     }
     
+    # confine.in.lims <- function(y, lims = c(0, 1)) {
+    #     y[y <- lims[1]] <- lims[1];     y[y > lims[2]] <- lims[2]
+    #     return(y)
+    # }
+    
     
     ######## MAIN ##############################################################
     
@@ -86,5 +91,14 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     
     y1.pred <- dist.match(y2.pred.map, ref = y1, src.cdf = get.cum.dist(y2, sample.size = size, dist.method = method), 
                           match.method = method, samp.size = size)
+    y1.pred[y1.pred < 0] <- 0;      y1.pred[y1.pred > 1] <- 1
+    names(y1.pred) <- names(y2.pred.map)
+    
+    ## Return output objects...
+    if (pred.opt) {
+        return( list("mapped" = y1.pred, "unmapped" = y2.pred.map) )
+    } else {
+        return( y1.pred )
+    }
     
 }
