@@ -872,7 +872,7 @@ fprintf(2, 'Tumor cultures to cell line data Transfer Learning...\n')
 PredApp = {'DMTL', 'DMTL_SS', 'CATL', 'BL'};
 RESULTS = array2table(zeros(q+1, numel(PredApp)), 'RowNames', [biomarkers; {'Mean'}], 'VariableNames', PredApp);
 RESULTS = struct('NRMSE', RESULTS, 'NMAE', RESULTS, 'SCC', RESULTS, 'numFeat', zeros(q+1, 1));
-for chosenBMidx = 6
+for chosenBMidx = 1:q
     %%% Feature selection...
     fprintf(1, 'Chosen biomarker = '),       fprintf(2, '%s\n', biomarkers{chosenBMidx})
     ranks = [rank1(:, chosenBMidx), rank2(:, chosenBMidx), rank3(:, chosenBMidx)];
@@ -1085,9 +1085,9 @@ RESULTS.NMAE{end, :} = mean(RESULTS.NMAE{1:q, :}, 1);
 RESULTS.SCC{end, :} = mean(RESULTS.SCC{1:q, :}, 1);
 RESULTS.numFeat(end) = mean(RESULTS.numFeat(1:q));
 
-% fprintf(2, 'Mean performance over %d biomarkers...\n', q)
-% fprintf(1, '\tm_opt = %d, m_avg = %d\n', m_opt, round(RESULTS.numFeat(end)))
-% RESULTS.summary = array2table(round([RESULTS.NRMSE{end, :}; RESULTS.NMAE{end, :}; RESULTS.SCC{end, :}], 4),...
-%                                                             'RowNames', {'NRMSE', 'NMAE', 'SCC'}, 'VariableNames', PredApp);
-% disp(RESULTS.summary)
+fprintf(2, 'Mean performance over %d biomarkers...\n', q)
+fprintf(1, '\tm_opt = %d, m_avg = %d\n', m_opt, round(RESULTS.numFeat(end)))
+RESULTS.summary = array2table(round([RESULTS.NRMSE{end, :}; RESULTS.NMAE{end, :}; RESULTS.SCC{end, :}], 4),...
+                                                            'RowNames', {'NRMSE', 'NMAE', 'SCC'}, 'VariableNames', PredApp);
+disp(RESULTS.summary)
 

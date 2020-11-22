@@ -14,6 +14,7 @@ setwd(info["DIRPATH"]);       cat("Current system path = ", getwd())
 library(ggplot2)
 library(ggpubr)
 library(randomForest)
+library(sROC)
 
 
 #### Functions...
@@ -28,9 +29,15 @@ dapply <- function(df, ...) as.data.frame(apply(df, ...))
 
 norm01 <- function(x) (x - min(x)) / diff(range(x))
 
-get.dist <- function(x, N = 1e6){
+get.dist <- function(x, N = 1e6, dist.opt = "hist"){
+  dist.opt <- tolower(dist.opt)
+  
   xx <- sample(x, size = N, replace = TRUE)
-  dist.xx <- ecdf(xx)
+  if (dist.opt == "hist") {
+    dist.xx <- ecdf(xx)
+  } else if (dist.opt == "kde") {
+    dist.xx <- kCDF(xx, kernel = "normal", bw = bw.CDF.pi(xx, pilot = "nrd0"))
+  }
 }
 
 calc.err <- function(y, y.pred, measure = "MSE"){
@@ -89,8 +96,8 @@ Y1 <- norm01(Ydata1[, bmChosen]);     Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[
 X1n <- dapply(X1, MARGIN = 2, norm01);          X2n <- dapply(X2, MARGIN = 2, norm01)
 X2n.mapped <- lapply(1:m, function(j){
   ## Calculate CDFs...
-  X1j.cdf <- get.dist(X1n[, j], N = 1e3)
-  X2j.cdf <- get.dist(X2n[, j], N = 1e3)
+  X1j.cdf <- get.dist(X1n[, j], N = 1e3, dist.opt = "kde")
+  X2j.cdf <- get.dist(X2n[, j], N = 1e3, dist.opt = "kde")
   
   ## Get mapping function...
   kn <- knots(X2j.cdf);     fn <- X2j.cdf(kn)
@@ -110,8 +117,8 @@ Y2.pred.mapped[Y2.pred.mapped < 0] <- 0;    Y2.pred.mapped[Y2.pred.mapped > 1] <
 
 
 ## Histogram matching for response...
-Y1.cdf <- get.dist(Y1, N = 1e3)
-Y2.cdf <- get.dist(Y2, N = 1e3)
+Y1.cdf <- get.dist(Y1, N = 1e3, dist.opt = "kde")
+Y2.cdf <- get.dist(Y2, N = 1e3, dist.opt = "kde")
 
 kn.y <- knots(Y1.cdf);    fn.y <- Y1.cdf(kn.y)
 map.y <- approxfun(x = fn.y, y = kn.y, method = "linear", yleft = 0, yright = 1, ties = "ordered")

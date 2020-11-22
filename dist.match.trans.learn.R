@@ -13,10 +13,10 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     
     
     ## Functions...
-    norm01    <- function(x) (x - min(x)) / diff(range(x))
+    norm01    <- function(z) {z <- if (min(z)) z - min(z);   z <- z / max(z);     z }
     norm.data <- function(df) as.data.frame(apply(df, MARGIN = 2, norm01))
     zscore    <- function(df) as.data.frame(apply(df, MARGIN = 2, scale))
-    # in01   <- function(x){ y <- x;    y[y < 0] <- 0;    y[y > 1] -> 1}
+    conf.lims <- function(y, lims = c(0, 1)){ y[y < lims[1]] <- lims[1];    y[y > lims[2]] <- lims[2];   y}
     
     ## Estimate distributions...
     get.cum.dist <- function(x, sample.size = 1e6, dist.method = "hist") {
@@ -50,22 +50,17 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     }
     
     ## Predictive modeling...
-    RF.prediction <- function(X.train, y.train, X.test, n.tree = 200, random.seed = seed, ...) {
+    RF.prediction <- function(x.train, y.train, x.test, n.tree = 200, random.seed = NULL, ...) {
         ## Set up model...
-        require(randomForest)                   # Load package
-        if (!is.null(random.seed))
-            set.seed(seed = random.seed)        # For reproducibility
+        if (!require(randomForest))             # Load package
+            library(randomForest)
+        set.seed(seed = random.seed)            # For reproducibility
         
         ## Define model & perform prediction...
-        forest <- randomForest(x = X.train, y = y.train, ntree = n.tree, replace = TRUE, ...)
-        y.pred <- predict(forest, X.test)
-        y.pred[y.pred < 0] <- 0;    y.pred[y.pred > 1] <- 1
+        forest <- randomForest(x = x.train, y = y.train, ntree = n.tree, replace = TRUE, ...)
+        y.pred <- conf.lims(predict(forest, x.test), lims = c(0, 1))
+        y.pred
     }
-    
-    # confine.in.lims <- function(y, lims = c(0, 1)) {
-    #     y[y <- lims[1]] <- lims[1];     y[y > lims[2]] <- lims[2]
-    #     return(y)
-    # }
     
     
     ######## MAIN ##############################################################
@@ -82,17 +77,11 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     X2.map <- as.data.frame(X2.map, col.names = colnames(X1), row.names = rownames(X1))
     
     ## Perform prediction & map back to original space...
-    if (!(is.null(seed)))
-        set.seed(seed)
-    pred.model <- randomForest(x = X2, y = y2, ntree = 200, mtry = 5, replace = TRUE)
-    y2.pred.map <- predict(pred.model, X2.map)
-    y2.pred.map[y2.pred.map < 0] <- 0;      y2.pred.map[y2.pred.map > 1] <- 1
-    # y2.pred.map <- RF.prediction(X.train = X2, y.train = y2, X.test = X2.map, n.tree = 200)
+    y2.pred.map <- RF.prediction(x.train = X2, y.train = y2, x.test = X2.map, n.tree = 200, random.seed = seed)
     
     y1.pred <- dist.match(y2.pred.map, ref = y1, src.cdf = get.cum.dist(y2, sample.size = size, dist.method = method), 
                           match.method = method, samp.size = size)
-    y1.pred[y1.pred < 0] <- 0;      y1.pred[y1.pred > 1] <- 1
-    names(y1.pred) <- names(y2.pred.map)
+    y1.pred <- conf.lims(y1.pred, lims = c(0, 1));      names(y1.pred) <- names(y2.pred.map)
     
     ## Return output objects...
     if (pred.opt) {
@@ -100,5 +89,5 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     } else {
         return( y1.pred )
     }
-    
+
 }

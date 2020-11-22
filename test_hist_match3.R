@@ -7,7 +7,7 @@ if (info["USERNAME"] == "SRDhruba"){
 } else {
   info["DIRPATH"] <- sprintf("%s\\Dropbox%s\\ResearchWork\\Rtest\\", info["HOMEPATH"], "")
 }
-setwd(info["DIRPATH"]);       cat("Current system path = ", getwd())
+setwd(info["DIRPATH"]);       cat("Current system path = ", getwd(), "\n")
 
 
 ## Packages...
@@ -18,32 +18,48 @@ library(randomForest)
 
 #### Functions...
 printf <- function(..., end = "\n"){
-  if ((nargs() > 1) & (grepl(list(... )[1], pattern = "%")))
+  if ((nargs() > 1) & (grepl(list(...)[1], pattern = "%")))
     cat(sprintf(...), end)
   else
     cat(..., end)
 }
 
-dapply <- function(df, ...) as.data.frame(apply(df, ...))
-
 norm01 <- function(x) (x - min(x)) / diff(range(x))
+norm.data <- function(df) as.data.frame(apply(df, MARGIN = 2, norm01))
 
-calc.err <- function(y, y.pred, measure = "MSE"){
-  measure <- toupper(measure)
-  if (grepl(pattern = "MSE", measure)){
-    err <- mean((y - y.pred)^2)
-    if (measure == "RMSE"){
-      err <- sqrt(err)
-    } else if (measure == "NRMSE"){
-      err <- sqrt(err / mean((y - mean(y))^2))
-    }
-  } else if (grepl(pattern = "MAE", measure)){
-    err <- mean(abs(y - y.pred))
-    if (measure == "NMAE"){
-      err <- err / mean(abs(y - mean(y)))
-    }
+calc.perf <- function(y, y.pred, measures = c("NRMSE", "NMAE", "SCC")) {
+  ## Initialize results array...
+  perf.vals <- c("sq.err" = NA, "abs.err" = NA, "cor.coef" = NA)
+  
+  for (mes in measures) {
+    
+    ## Calculate squared error...
+    if (grepl(pattern = "MSE", mes, ignore.case = TRUE)) {
+      num <- mean((y - y.pred)^2)
+      den <- if (mes == "NRMSE") mean((y - mean(y))^2) else 1
+      pow <- if (mes == "MSE") 1 else 0.5
+      perf.vals["sq.err"] <- (num / den)^pow
+    } 
+    
+    ## Calculate absolute error...
+    else if (grepl(pattern = "MAE", mes, ignore.case = TRUE)) {
+      num <- mean(abs(y - y.pred))
+      den <- if (mes == "NMAE") mean(abs(y - mean(y))) else 1
+      perf.vals["abs.err"] <- num / den
+    } 
+    
+    ## Calculate similarity measures...
+    else if (grepl(pattern = "CC", mes, ignore.case = TRUE)) {
+      alg <- if (mes == "SCC") "spearman" else "pearson"
+      perf.vals["cor.coef"] <- cor(y, y.pred, method = alg)
+    } 
+    
+    ## Doesn't match any...
+    else 
+      stop("Invalid performance measure!")
   }
-  err
+  
+  perf.vals
 }
 
 # confine.in.lims <- function(y, lims = c(0, 1)) {
@@ -91,15 +107,18 @@ get.top.genes <- function(ranks, m_top = 150, print.opt = FALSE) {
 ## Get results for all biomarkers...
 source("dist.match.trans.learn.R")      ## Load function
 
-# run <- function(random.seed = NULL) {
-random.seed <- 654321
-results.all <- list("NRMSE" = data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    "NMAE"  = data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    "SCC"   = data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    "genes" = data.frame("num.genes" = double()))
+run <- function(q.run, random.seed) {
+# q.run <- 7                     # drug idx
+# random.seed <- 4321            # 0, 654321, 4321
 
-q_run <- q
-for (k in 1:q_run) {
+perf.mes <- c("NRMSE", "NMAE", "SCC")  
+results.all <- list(data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
+                    data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
+                    data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
+                    "genes" = data.frame("num.genes" = double()))
+names(results.all)[1:3] <- perf.mes
+
+for (k in q.run) {
   
   ## Select biomarker... 
   bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
@@ -120,50 +139,85 @@ for (k in 1:q_run) {
   
   ## Baseline model...
   set.seed(random.seed)
-  RF.base <- randomForest(x = dapply(X2, MARGIN = 2, norm01), y = Y2, ntree = 200, mtry = 5, replace = TRUE)
-  Y1.pred.base <- predict(RF.base, dapply(X1, MARGIN = 2, norm01))
+  RF.base <- randomForest(x = norm.data(X2), y = Y2, ntree = 200, mtry = 5, replace = TRUE)
+  Y1.pred.base <- predict(RF.base, norm.data(X1))
   Y1.pred.base[Y1.pred.base < 0] <- 0;      Y1.pred.base[Y1.pred.base > 1] <- 1
   
   
   ## Results df...
   # printf("After prediction: NRMSE = %0.4f, NMAE = %0.4f", NRMSE, NMAE)
   
-  results <- data.frame("DMTL" = c(calc.err(Y1, Y1.pred, measure = "NRMSE"), calc.err(Y1, Y1.pred, measure = "NMAE"), 
-                                   cor(Y1, Y1.pred, method = "spearman")), 
-                        "DMTL_SS" = c(calc.err(Y1, Y1.pred.src, measure = "NRMSE"), calc.err(Y1, Y1.pred.src, measure = "NMAE"), 
-                                   cor(Y1, Y1.pred.src, method = "spearman")), 
-                        'BL' = c(calc.err(Y1, Y1.pred.base, measure = "NRMSE"), calc.err(Y1, Y1.pred.base, measure = "NMAE"), 
-                                 cor(Y1, Y1.pred.base, method = "spearman")), 
-                        row.names = c("NRMSE", "NMAE", "SCC"))
-  
+  results <- data.frame("DMTL"    = calc.perf(Y1, Y1.pred, measures = perf.mes), 
+                        "DMTL_SS" = calc.perf(Y1, Y1.pred.src, measures = perf.mes), 
+                        "BL"      = calc.perf(Y1, Y1.pred.base, measures = perf.mes), row.names = perf.mes)
   # printf("Results = \n");   print(results)
   
   
   ## Save results in df...
-  results.all$NRMSE[bmChosen, ] <- results["NRMSE", ];     results.all$NMAE[bmChosen, ] <- results["NMAE", ]
-  results.all$SCC[bmChosen, ] <- results["SCC", ];         results.all$genes[bmChosen, ] <- m
+  results.all[[perf.mes[1]]][bmChosen, ] <- results[perf.mes[1], ]
+  results.all[[perf.mes[2]]][bmChosen, ] <- results[perf.mes[2], ]
+  results.all[[perf.mes[3]]][bmChosen, ] <- results[perf.mes[3], ]
+  results.all$genes[bmChosen, ] <- m
 }
 
 ## Calculate mean performance...
-results.all$NRMSE["Mean", ] <- colMeans(results.all$NRMSE[biomarkers, ], na.rm = TRUE)
-results.all$NMAE["Mean", ]  <- colMeans(results.all$NMAE[biomarkers, ], na.rm = TRUE)
-results.all$SCC["Mean", ]   <- colMeans(results.all$SCC[biomarkers, ], na.rm = TRUE)
-results.all$genes["Mean", ] <- mean(results.all$genes[biomarkers, ], na.rm = TRUE)
-results.all[["table"]] <- rbind("NRMSE" = results.all$NRMSE["Mean", ], 
-                                "NMAE" = results.all$NMAE["Mean", ], 
-                                "SCC" = results.all$SCC["Mean", ])
+results.all[[perf.mes[1]]]["Mean", ] <- colMeans(results.all[[perf.mes[1]]][biomarkers, ], na.rm = TRUE)
+results.all[[perf.mes[2]]]["Mean", ] <- colMeans(results.all[[perf.mes[2]]][biomarkers, ], na.rm = TRUE)
+results.all[[perf.mes[3]]]["Mean", ] <- colMeans(results.all[[perf.mes[3]]][biomarkers, ], na.rm = TRUE)
+results.all$genes["Mean", ]          <- mean(results.all$genes[biomarkers, ], na.rm = TRUE)
 
+results.all[["table"]] <- rbind(results.all[[perf.mes[1]]]["Mean", ], results.all[[perf.mes[2]]]["Mean", ], 
+                                results.all[[perf.mes[3]]]["Mean", ])
+rownames(results.all$table) <- perf.mes
 printf("\nResults summary = ");    print(results.all$table)
-# }
 
-# run(random.seed = 654321)
+results.all
+}
+
+# source("dist.match.trans.learn.R")      ## Load function
+results.all <- run(q.run = 1:q, random.seed = 531)
+c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
+
+
+# ## Write in temporary file...
+# write.in.file <- function() {
+# write.table(results.all$NRMSE, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", row.names = TRUE, col.names = TRUE)
+# write.table(results.all$NMAE, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", append = TRUE, row.names = TRUE, col.names = TRUE)
+# write.table(results.all$SCC, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", append = TRUE, row.names = TRUE, col.names = TRUE)
+# }
+# write.in.file()
+
 
 
 # ##
-# gg.pp <- list()
-# gg.pp[["Tumor"]] <- ggplot(MB.df, aes_string(x = bmChosen)) + geom_density(fill = "cyan4", alpha = 0.7) + theme_light() +
-#                       xlab("") + ylab("") + ggtitle("Tumor") + theme(plot.title = element_text(hjust = 0.5))
-# gg.pp[["Cell line"]] <- ggplot(CG.df, aes_string(x = bmChosen)) + geom_density(fill = "brown4", alpha = 0.7) + theme_light() +
-#                           xlab("") + ylab("") + ggtitle("Cell line") + theme(plot.title = element_text(hjust = 0.5))
-# gg.pp[["ncol"]] <- 2
-# annotate_figure(do.call(ggarrange, gg.pp), top = text_grob(bmChosen, face = "bold"))
+MB.df <- as.data.frame(cbind(Y1, Y1.pred, Y1.pred.src, Y1.pred.base), row.names = rownames(Ydata1))
+CG.df <- as.data.frame(Y2, row.names = c(rownames(Ydata2), rownames(Ydata3)))
+
+plot.dist <- function() {
+gg.pp <- list()
+gg.pp[["Tumor"]] <- ggplot(MB.df, aes(x = Y1)) + geom_density(fill = "cyan4", alpha = 0.7) + 
+                      geom_histogram(aes(y = ..density..), bins = 100, color = "gray2", 
+                                     fill = "brown2", alpha = 0.3) + theme_light() + xlab("") + 
+                      ylab("") + ggtitle("Tumor") + theme(plot.title = element_text(hjust = 0.5))
+gg.pp[["Cell line"]] <- ggplot(CG.df, aes(x = Y2)) + geom_density(fill = "brown4", alpha = 0.7) + 
+                          geom_histogram(aes(y = ..density..), bins = 100, color = "gray2", 
+                                         fill = "cyan2", alpha = 0.3) + theme_light() + xlab("") + 
+                          ylab("") + ggtitle("Cell line") + theme(plot.title = element_text(hjust = 0.5))
+gg.pp[["Tumor.Pred"]] <- ggplot(MB.df, aes(x = Y1.pred)) + geom_density(fill = "cyan4", alpha = 0.7) + 
+                          geom_histogram(aes(y = ..density..), bins = 100, color = "gray2", 
+                                         fill = "brown2", alpha = 0.3) + theme_light() + xlab("") + 
+                          ylab("") + ggtitle("Tumor (Predicted)") + theme(plot.title = element_text(hjust = 0.5))
+gg.pp[["Tumor.Pred.Src"]] <- ggplot(MB.df, aes(x = Y1.pred.src)) + geom_density(fill = "brown4", alpha = 0.7) + 
+                              geom_histogram(aes(y = ..density..), bins = 100, color = "gray2", 
+                                             fill = "cyan2", alpha = 0.3) + theme_light() + xlab("") + 
+                              ylab("") + ggtitle("Tumor (Predicted - Source)") + 
+                              theme(plot.title = element_text(hjust = 0.5))
+
+gg.pp[c("ncol", "nrow")] <- list(2, 2)
+annotate_figure(do.call(ggarrange, gg.pp), top = text_grob(bmChosen, face = "bold"))
+}
+
+plot.dist()
