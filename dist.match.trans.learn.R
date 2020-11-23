@@ -13,7 +13,7 @@ dist.match.trans.learn <- function(target.set, source.set, method = "hist", size
     
     
     ## Functions...
-    norm01    <- function(z) {z <- if (min(z)) z - min(z);   z <- z / max(z);     z }
+    norm01    <- function(z) { z <- if (min(z)) z - min(z);   z <- z / max(z);  z }
     norm.data <- function(df) as.data.frame(apply(df, MARGIN = 2, norm01))
     zscore    <- function(df) as.data.frame(apply(df, MARGIN = 2, scale))
     conf.lims <- function(y, lims = c(0, 1)){ y[y < lims[1]] <- lims[1];    y[y > lims[2]] <- lims[2];   y}

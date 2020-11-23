@@ -17,17 +17,44 @@ library(randomForest)
 
 
 #### Functions...
-printf <- function(..., end = "\n"){
+printf <- function(..., end = "\n") {
   if ((nargs() > 1) & (grepl(list(...)[1], pattern = "%")))
     cat(sprintf(...), end)
   else
     cat(..., end)
 }
 
-norm01 <- function(x) (x - min(x)) / diff(range(x))
+norm01    <- function(z) { z <- if (min(z)) z - min(z);   z <- z / max(z);  z }
 norm.data <- function(df) as.data.frame(apply(df, MARGIN = 2, norm01))
 
+
+### Pick top genes...
+get.top.genes <- function(ranks, m.top = 150, print.opt = FALSE) {
+  
+  ## Initialization...
+  nI <- 0;        nGN <- 300
+  gene.rank <- intersect(ranks[1:nGN, 1], ranks[1:nGN, 2])
+  m  <- length(gene.rank);     m0 <- if (print.opt) m
+  
+  ## Run iterations...
+  while(m < m.top) {
+    nI <- nI + 1;       nGN <- nGN + 100
+    gene.rank <- intersect(ranks[1:nGN, 1], ranks[1:nGN, 2])
+    m  <- length(gene.rank)
+  }
+  gene.rank <- sort(gene.rank, decreasing = FALSE)    # Sort ranks
+  
+  ## Print results...
+  if (print.opt)
+    printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
+  
+  gene.rank
+}
+
+
+### Get model performance...
 calc.perf <- function(y, y.pred, measures = c("NRMSE", "NMAE", "SCC")) {
+  
   ## Initialize results array...
   perf.vals <- c("sq.err" = NA, "abs.err" = NA, "cor.coef" = NA)
   
@@ -62,10 +89,6 @@ calc.perf <- function(y, y.pred, measures = c("NRMSE", "NMAE", "SCC")) {
   perf.vals
 }
 
-# confine.in.lims <- function(y, lims = c(0, 1)) {
-#   y[y < lims[1]] <- lims[1];      y[y > lims[2]] <- lims[2]
-# }
-
 
 #### Read tumor-cell line data...
 Xdata1 <- read.table("Data/BRCA_gene_expression_METABRIC_26_Oct_2020.txt", sep = "\t", header = TRUE)
@@ -80,42 +103,19 @@ rank1 <- read.table("Data/BRCA_biomarker_ranks_METABRIC_27_Oct_2020.txt", sep = 
 rank2 <- read.table("Data/BRCA_biomarker_ranks_CCLE_27_Oct_2020.txt", sep = "\t", header = TRUE)
 rank3 <- read.table("Data/BRCA_biomarker_ranks_GDSC_27_Oct_2020.txt", sep = "\t", header = TRUE)
 
-
-#### Get data for a biomarker...
 biomarkers <- colnames(Ydata1);       q <- length(biomarkers)
 
 
-## Function for selecting top 'm' genes...
-get.top.genes <- function(ranks, m_top = 150, print.opt = FALSE) {
-  ## Get data for common top 'm' genes...
-  nGN <- 300;     gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3])
-  nI <- 0;        m <- length(gnRank);     m0 <- m
-  while(m < m_top) {
-    nI <- nI + 1;       nGN <- nGN + 100
-    gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3]);    m <- length(gnRank)
-  }
-  
-  ## Print results...
-  if (print.opt)
-    printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
-  
-  ## Sort the ranks...
-  gnRank <- sort(gnRank, decreasing = FALSE)
-}
-  
-
 ## Get results for all biomarkers...
-source("dist.match.trans.learn.R")      ## Load function
+# source("dist.match.trans.learn.R")      ## Load function
 
 run <- function(q.run, random.seed) {
 # q.run <- 7                     # drug idx
 # random.seed <- 4321            # 0, 654321, 4321
 
 perf.mes <- c("NRMSE", "NMAE", "SCC")  
-results.all <- list(data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
-                    "genes" = data.frame("num.genes" = double()))
+results.all <- list(data.frame("DMTL" = NA, "DMTL_SS" = NA, "BL" = NA), data.frame("DMTL" = NA, "DMTL_SS" = NA, "BL" = NA), 
+                    data.frame("DMTL" = NA, "DMTL_SS" = NA, "BL" = NA), "genes" = data.frame("num.genes" = NA))
 names(results.all)[1:3] <- perf.mes
 
 for (k in q.run) {
@@ -123,7 +123,7 @@ for (k in q.run) {
   ## Select biomarker... 
   bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
   ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
-  gnRank   <- get.top.genes(ranks, m_top = 150, print.opt = FALSE);      m <- length(gnRank)
+  gnRank   <- get.top.genes(ranks[, 2:3], m_top = 150, print.opt = FALSE);      m <- length(gnRank)
   
   
   ## Prepare datasets...
@@ -144,16 +144,10 @@ for (k in q.run) {
   Y1.pred.base[Y1.pred.base < 0] <- 0;      Y1.pred.base[Y1.pred.base > 1] <- 1
   
   
-  ## Results df...
-  # printf("After prediction: NRMSE = %0.4f, NMAE = %0.4f", NRMSE, NMAE)
-  
+  ## Generate & save results...
   results <- data.frame("DMTL"    = calc.perf(Y1, Y1.pred, measures = perf.mes), 
                         "DMTL_SS" = calc.perf(Y1, Y1.pred.src, measures = perf.mes), 
                         "BL"      = calc.perf(Y1, Y1.pred.base, measures = perf.mes), row.names = perf.mes)
-  # printf("Results = \n");   print(results)
-  
-  
-  ## Save results in df...
   results.all[[perf.mes[1]]][bmChosen, ] <- results[perf.mes[1], ]
   results.all[[perf.mes[2]]][bmChosen, ] <- results[perf.mes[2], ]
   results.all[[perf.mes[3]]][bmChosen, ] <- results[perf.mes[3], ]
@@ -174,7 +168,7 @@ printf("\nResults summary = ");    print(results.all$table)
 results.all
 }
 
-# source("dist.match.trans.learn.R")      ## Load function
+source("dist.match.trans.learn.R")      ## Load function
 results.all <- run(q.run = 1:q, random.seed = 531)
 c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
