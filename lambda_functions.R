@@ -3,12 +3,11 @@
 ## Dependency: base 
 ################################################################################
 
-
 ## Normalize in [0, 1]...
 norm01    <- function(z) { z <- if (min(z) != 0) z - min(z);   z <- z / max(z);  z }
 
 ## Normalize dataframe (or matrix) columns in [0, 1]...
-norm.data <- function(Z) as.data.frame(apply(Z, MARGIN = 2, FUN = norm01))
+norm_data <- function(Z) as.data.frame(apply(Z, MARGIN = 2, FUN = norm01))
 
 ## Standardize dataframe (or matrix) columns...
 zscore    <- function(Z) as.data.frame(apply(Z, MARGIN = 2, FUN = scale))

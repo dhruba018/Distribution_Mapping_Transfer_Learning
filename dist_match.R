@@ -6,29 +6,29 @@
 ## Dependency_own: lambda_functions 
 ################################################################################
 
-dist_match <- function(src, ref, src_cdf, ref_cdf, lims, match_method = "hist", samp_size = 1e6) {
-  
-  source("get_dist_est.R")
-  source("match_func.R")
+dist_match <- function(src, ref, src_dist, ref_dist, lims, match_method = "hist", samp_size = 1e6) {
   
   ## Get distributions...
-  if (missing(ref_cdf)) 
-    ref_cdf <- get_dist_est(ref, sample_size = samp_size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
+  source("get_dist_est.R")
   
-  if (missing(src_cdf))  
-    src_cdf <- get_dist_est(src, sample_size = samp.size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
+  if (missing(ref_dist)) 
+    ref_dist <- get_dist_est(ref, sample_size = samp_size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
+  
+  if (missing(src_dist))  
+    src_dist <- get_dist_est(src, sample_size = samp.size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
   
   
   ## Mapping parameters...
   match_method <- tolower(match_method)
+  
   if (match_method == "hist") {                           # Using histogram
-    kn_vals <- knots(ref_cdf);              fn_vals <- ref_cdf(kn_vals)
-    vals_to_match <- src_cdf(src)
+    kn_vals <- knots(ref_dist);              fn_vals <- ref_dist(kn_vals)
+    vals_to_match <- src_dist(src)
   } 
   
   else if (match_method == "dens") {                      # Using kernel density
-    kn_vals <- ref_cdf$eval.points;         fn_vals <- ref_cdf$estimate
-    vals_to_match <- predict(src_cdf, x = src)
+    kn_vals <- ref_dist$eval.points;         fn_vals <- ref_dist$estimate
+    vals_to_match <- predict(src_dist, x = src)
   } 
   
   else {
@@ -36,6 +36,8 @@ dist_match <- function(src, ref, src_cdf, ref_cdf, lims, match_method = "hist", 
   }
   
   ## Perform mapping...
+  source("match_func.R")
+  
   if (missing(lims))
     lims <- c(min(src), max(src))
   

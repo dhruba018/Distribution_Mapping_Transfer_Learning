@@ -139,20 +139,20 @@ for (k in q.run) {
   
   
   ## DMTL model...
-  prediction <- dist.match.trans.learn(target.set = list("X" = X1, "y" = Y1), source.set = list("X" = X2, "y" = Y2), 
-                                       method = method.opt, seed = random.seed, pred.opt = TRUE)
+  prediction <- DMTL(target_set = list("X" = X1, "y" = Y1), source_set = list("X" = X2, "y" = Y2), 
+                     method = method.opt, seed = random.seed, pred_all = TRUE)
   Y1.pred <- prediction$mapped;     Y1.pred.src <- prediction$unmapped
   
   
   ## Baseline model...
-  Y1.pred.base <- RF_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), 
-                             n_tree = 200, m_try = 0.4, rand_seed = random.seed)
-  
   # set.seed(random.seed)
   # RF.base <- randomForest(x = norm.data(X2), y = Y2, ntree = 200, mtry = 5, replace = TRUE)
   # Y1.pred.base <- predict(RF.base, norm.data(X1))
   # Y1.pred.base[Y1.pred.base < 0] <- 0;      Y1.pred.base[Y1.pred.base > 1] <- 1
   # 
+  Y1.pred.base <- RF_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), 
+                             n_tree = 200, m_try = 0.4, rand_seed = random.seed)
+  
   
   ## Generate & save results...
   results <- data.frame("DMTL"    = calc.perf(Y1, Y1.pred, measures = perf.mes), 
@@ -160,9 +160,7 @@ for (k in q.run) {
                         "BL"      = calc.perf(Y1, Y1.pred.base, measures = perf.mes), row.names = perf.mes)
   
   ## Print option...
-  if (length(q.run) == 1) {
-    printf("\nResults for %s = ", bmChosen);     print(results)
-  }
+  if (length(q.run) == 1) { printf("\nResults for %s = ", bmChosen);     print(results) }
   
   results.all[[perf.mes[1]]][bmChosen, ] <- results[perf.mes[1], ]
   results.all[[perf.mes[2]]][bmChosen, ] <- results[perf.mes[2], ]
@@ -181,16 +179,14 @@ results.all[["table"]] <- rbind(results.all[[perf.mes[1]]]["Mean", ], results.al
 rownames(results.all$table) <- perf.mes
 
 ## Print options...
-if (length(q.run) > 1) {
-  printf("\nResults summary = ");    print(results.all$table)
-}
+if (length(q.run) > 1) { printf("\nResults summary = ");    print(results.all$table) }
 
 results.all
 }
 
-source("dist.match.trans.learn.R")      ## Load function
-# source("dist_match_trans_learn.R")      ## Load function
-results.all <- run(q.run = 1:q, random.seed = 0, method.opt = "hist")
+# source("dist.match.trans.learn.R")      ## Load function
+source("dist_match_trans_learn.R")      ## Load function
+results.all <- run(q.run = 1:q, random.seed = 4321, method.opt = "dens")
 # c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
 

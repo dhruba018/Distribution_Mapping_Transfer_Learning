@@ -1,3 +1,12 @@
+## Complete function file for distribution mapping transfer learning. The 
+## underscored versions are derivative from this file by putting each 
+## individual function into a separate file for better maintenance purposes.
+## 
+## Dependency: stats, ks, randomForest
+## 
+## Author: SR Dhruba, Nov 2020
+#################################################################################
+
 dist.match.trans.learn <- function(target.set, source.set, method = "hist", size = 1e3, seed = NULL, pred.opt = FALSE){
     
     ## Initial check...
