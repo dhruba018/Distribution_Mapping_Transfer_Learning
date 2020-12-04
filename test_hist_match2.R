@@ -103,39 +103,36 @@ biomarkers <- colnames(Ydata1);       # printf("Biomarkers = ", biomarkers)
 q <- length(biomarkers)
 
 run <- function(k, s = 4321) {
-bmChosen <- biomarkers[k];            printf("Chosen biomarker = %s", bmChosen)
+# k <- 1;     s <- 4321 
+bmChosen <- biomarkers[k];            printf("\nChosen biomarker = %s", bmChosen)
 ranks <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
-# s <- 4321
-
-# ## Top 'm' common genes...
-# m_opt <- 150;       nGN <- 300;               gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3])
-# nI <- 0;            m0 <- length(gnRank);     m <- m0
-# while(m < m_opt){
-#   nI <- nI + 1;     nGN <- nGN + 100
-#   gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3]);      m <- length(gnRank)
-# }
-# gnRank <- sort(gnRank, decreasing = FALSE)
-# printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
-
 gnRank <- get.top.genes(ranks[, 2:3], m.top = 150, print.opt = TRUE)
+m <- length(gnRank)
 
 X1 <- Xdata1[, gnRank];                   X2 <- rbind(Xdata2[, gnRank], Xdata3[, gnRank])
 Y1 <- norm01(Ydata1[, bmChosen]);         Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[, bmChosen]))
 
 X1n <- dapply(X1, MARGIN = 2, norm01);    X2n <- dapply(X2, MARGIN = 2, norm01)
-m <- if (ncol(X1n) == ncol(X2n)) ncol(X1n)
+
+grid.size <- 1e2
+get.cdf <- function(z, ...) kcde(z, h = hscv(z, nstage = 2, binned = TRUE, bgridsize = grid.size*10), 
+                                 binned = TRUE, bgridsize = grid.size, xmin = 0, xmax = 1,...)
 
 X2n.map <- lapply(1:m, function(j) {
-  h2j <- hscv(X2n[, j], nstage = 2, binned = TRUE, bgridsize = 1e4)
-  x2j.cdf <- kcde(X2n[, j], tail.flag = "lower.tail", h = h2j, xmin = 0, xmax = 1)
+  x1j <- sample(X1n[, j], size = 1e4, replace = TRUE)
+  x2j <- sample(X2n[, j], size = 1e4, replace = TRUE)
   
-  kn.j <- x2j.cdf$eval.points;     fn.j <- x2j.cdf$estimate
-  x2j.cdf <- approxfun(x = kn.j, y = fn.j, method = "linear", ties = "ordered")
+  # x2j.cdf <- kcde(x2j, binned = TRUE, bgridsize = grid.size, xmin = 0, xmax = 1)
+  # map <- function(fn.xj) qkde(fhat = x2j.pdf, p = fn.xj)
   
-  kn.j <- sort(sample(kn.j, size = 1e3, replace = TRUE));     fn.j <- x2j.cdf(kn.j)
-  map <- approxfun(x = fn.j, y = kn.j, method = "linear", yleft = 0, yright = 1, ties = "ordered")
+  x2j.cdf <- get.cdf(x2j)
+  map <- approxfun(x = x2j.cdf$estimate, y = x2j.cdf$eval.points, method = "linear", yleft = 0, yright = 1, ties = "ordered")
   
-  x2j.map <- map(x2j.cdf(X1n[, j]))
+  # x1j.cdf <- kcde(x1j, binned = TRUE, bgridsize = grid.size, xmin = 0, xmax = 1, eval.points = X1n[, j])
+  # fn.xj <- pkde(fhat = x1j.pdf, q = X1n[, j])
+  
+  x1j.cdf <- get.cdf(x1j, eval.points = X1n[, j])
+  x2j.map <- map(x1j.cdf$estimate)
 })
 X2n.map <- as.data.frame(X2n.map, row.names = rownames(X1n), col.names = colnames(X1n))
 
@@ -147,24 +144,21 @@ Y2.pred.map[Y2.pred.map < 0] <- 0;    Y2.pred.map[Y2.pred.map > 1] <- 1
 
 
 ## Histogram matching for response...
-# Y1.cdf <- get.dist(Y1, N = 1e3, dist.opt = "kde")
-# Y2.cdf <- get.dist(Y2, N = 1e3, dist.opt = "kde")
+y1 <- sample(Y1, size = 1e4, replace = TRUE)
+y2 <- sample(Y2, size = 1e4, replace = TRUE)
 
-h1 <- hscv(Y1, nstage = 2, binned = TRUE, bgridsize = 1e4)
-h2 <- hscv(Y2, nstage = 2, binned = TRUE, bgridsize = 1e4)
-Y1.cdf <- kcde(Y1, tail.flag = "lower.tail", h = h1, xmin = 0, xmax = 1)
-Y2.cdf <- kcde(Y2, tail.flag = "lower.tail", h = h2, xmin = 0, xmax = 1)
+# y1.cdf <- kcde(y1, binned = TRUE, bgridsize = grid.size, xmin = 0, xmax = 1)
+# map.y <- function(fn.y) qkde(fhat = y1.pdf, p = fn.y)
 
-kn.y <- Y1.cdf$eval.points;     fn.y <- Y1.cdf$estimate
-Y1.cdf <- approxfun(x = kn.y, y = fn.y, method = "linear", ties = "ordered")
+y1.cdf <- get.cdf(y1)
+map.y <- approxfun(x = y1.cdf$estimate, y = y1.cdf$eval.points, method = "linear", yleft = 0, yright = 1, ties = "ordered")
 
-kn.y <- sort(sample(kn.y, size = 1e3, replace = TRUE));    fn.y <- Y1.cdf(kn.y)
-map.y <- approxfun(x = fn.y, y = kn.y, method = "linear", yleft = 0, yright = 1, ties = "ordered")
+# y2.cdf <- kcde(y2, binned = TRUE, bgridsize = grid.size, xmin = 0, xmax = 1, eval.points = Y2.pred.map)
+# fn.y <- pkde(fhat = y2.pdf, q = Y2.pred.map)
 
-kn.y2 <- Y2.cdf$eval.points;     fn.y2 <- Y2.cdf$estimate
-Y2.cdf <- approxfun(x = kn.y2, y = fn.y2, method = "linear", ties = "ordered")
-
-Y1.pred <- map.y(Y2.cdf(Y2.pred.map))
+y2.cdf <- get.cdf(y2, eval.points = Y2.pred.map)
+Y1.pred <- map.y(y2.cdf$estimate)
+# Y1.pred <- map.y(fn.y)
 
 
 #### Baseline model...
@@ -182,9 +176,50 @@ results <- data.frame("DMTL" = c(calc.err(Y1, Y1.pred, measure = "NRMSE"), calc.
                       row.names = c("NRMSE", "NMAE", "SCC"))
 
 printf("Results = \n");   print(results)
+
+results
 }
 
-sapply(1:q, run)
+res <- sapply(1:q, run)
+
+res2 <- list(DMTL = as.data.frame(t(sapply(1:q, function(i) res[1, ][[i]])), row.names = biomarkers), 
+             BL = as.data.frame(t(sapply(1:q, function(i) res[2, ][[i]])), row.names = biomarkers))
+res2 <- lapply(names(res2), function(k) { colnames(res2[[k]]) = c("NRMSE", "NMAE", "SCC");    res2[[k]] })
+names(res2) <- c("DMTL", "BL")
+res2$DMTL["Mean", ] = colMeans(res2$DMTL)
+res2$BL["Mean", ] = colMeans(res2$BL)
+
+rbind(DMTL = res2$DMTL["Mean", ], BL = res2$BL["Mean", ])
+
+
+
+#############################################################################################
+# h2j <- hscv(X2n[, j], nstage = 2, binned = TRUE, bgridsize = 1e4)
+# x2j.cdf <- kcde(x2j, tail.flag = "lower.tail", h = h2j, xmin = 0, xmax = 1)
+# 
+# kn.j <- x2j.cdf$eval.points;     fn.j <- x2j.cdf$estimate
+# x2j.cdf <- approxfun(x = kn.j, y = fn.j, method = "linear", ties = "ordered")
+# 
+# kn.j <- sort(sample(kn.j, size = 1e3, replace = TRUE));     fn.j <- x2j.cdf(kn.j)
+# map <- approxfun(x = fn.j, y = kn.j, method = "linear", yleft = 0, yright = 1, ties = "ordered")
+# 
+# x2j.map <- map(x2j.cdf(X1n[, j]))
+
+# h1 <- hscv(Y1, nstage = 2, binned = TRUE, bgridsize = 1e4)
+# h2 <- hscv(Y2, nstage = 2, binned = TRUE, bgridsize = 1e4)
+# Y1.cdf <- kcde(y1, tail.flag = "lower.tail", h = h1, xmin = 0, xmax = 1)
+# Y2.cdf <- kcde(y2, tail.flag = "lower.tail", h = h2, xmin = 0, xmax = 1)
+# 
+# kn.y <- Y1.cdf$eval.points;     fn.y <- Y1.cdf$estimate
+# Y1.cdf <- approxfun(x = kn.y, y = fn.y, method = "linear", ties = "ordered")
+# 
+# kn.y <- sort(sample(kn.y, size = 1e3, replace = TRUE));    fn.y <- Y1.cdf(kn.y)
+# map.y <- approxfun(x = fn.y, y = kn.y, method = "linear", yleft = 0, yright = 1, ties = "ordered")
+# 
+# kn.y2 <- Y2.cdf$eval.points;     fn.y2 <- Y2.cdf$estimate
+# Y2.cdf <- approxfun(x = kn.y2, y = fn.y2, method = "linear", ties = "ordered")
+# 
+# Y1.pred <- map.y(Y2.cdf(Y2.pred.map))
 
 
 #############################################################################################
@@ -235,6 +270,32 @@ par(op)
 
 
 ##################################################################################################
+
+#### Get data for a biomarker...
+biomarkers <- colnames(Ydata1);       # printf("Biomarkers = ", biomarkers)
+q <- length(biomarkers)
+
+bmChosen <- biomarkers[k];            printf("\nChosen biomarker = %s", bmChosen)
+ranks <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
+  
+## Top 'm' common genes...
+m_opt <- 150;       nGN <- 300;               gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3])
+nI <- 0;            m0 <- length(gnRank);     m <- m0
+while(m < m_opt){
+  nI <- nI + 1;     nGN <- nGN + 100
+  gnRank <- intersect(ranks[1:nGN, 2], ranks[1:nGN, 3]);      m <- length(gnRank)
+}
+gnRank <- sort(gnRank, decreasing = FALSE)
+printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
+
+gnRank <- get.top.genes(ranks[, 2:3], m.top = 150, print.opt = TRUE)
+
+X1 <- Xdata1[, gnRank];                   X2 <- rbind(Xdata2[, gnRank], Xdata3[, gnRank])
+Y1 <- norm01(Ydata1[, bmChosen]);         Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[, bmChosen]))
+
+X1n <- dapply(X1, MARGIN = 2, norm01);    X2n <- dapply(X2, MARGIN = 2, norm01)
+m <- if (ncol(X1n) == ncol(X2n)) ncol(X1n)
+
 
 ## Histogram matching for predictors...
 X1n <- dapply(X1, MARGIN = 2, norm01);          X2n <- dapply(X2, MARGIN = 2, norm01)
