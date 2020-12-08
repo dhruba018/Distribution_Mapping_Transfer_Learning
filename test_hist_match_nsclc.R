@@ -133,7 +133,7 @@ run <- function(q.run, random.seed, method.opt) {
     ## Select biomarker... 
     bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
     ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen], rank4[, bmChosen])
-    gnRank   <- get.top.genes(ranks[, 3:4], m.top = 150, verbose = FALSE);      m <- length(gnRank)
+    gnRank   <- get.top.genes(ranks[, 3:4], m.top = 50, verbose = FALSE);      m <- length(gnRank)
     
     
     ## Prepare datasets...
