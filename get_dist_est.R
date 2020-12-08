@@ -4,8 +4,8 @@
 ## Dependency: stats, ks 
 ################################################################################
 
-get_dist_est <- function(x, sample_size = 1e6, dist_method = "hist", size_tol = 1e3, 
-                         binned = TRUE, grid_size = 1e4, x_range = "est", ...) {
+get_dist_est <- function(x, sample_size = 1e6, dist_method = "hist", size_tol = 1e3, binned = TRUE, 
+                         grid_size = 1e4, x_range = "est", random_seed = NULL, ...) {
     
     ## Get data range...
     x_range <- switch (x_range,
@@ -14,6 +14,7 @@ get_dist_est <- function(x, sample_size = 1e6, dist_method = "hist", size_tol = 
     )
     
     ## Bootstrapping...
+    set.seed(random_seed)                       # For reproducibility
     xx <- if (length(x) < size_tol) sample(x, size = sample_size, replace = TRUE) else x
     
     

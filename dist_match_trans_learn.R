@@ -37,7 +37,7 @@ DMTL <- function(target_set, source_set, method = "hist", size = 1e3, seed = NUL
     
     ## Distribution matching for predictors...
     X2_map <- lapply(1:n_feat, function(j) { 
-        dist_match(X1[, j], ref = X2[, j], match_method = method, samp_size = size, lims = data_lims)
+        dist_match(X1[, j], ref = X2[, j], match_method = method, samp_size = size, lims = data_lims, rand_seed = seed)
         })
     X2_map <- as.data.frame(X2_map);    dimnames(X2_map) <- dimnames(X1)
     # rownames(X2_map) <- rownames(X1);   colnames(X2_map) <- colnames(X1)
@@ -46,9 +46,10 @@ DMTL <- function(target_set, source_set, method = "hist", size = 1e3, seed = NUL
     ## Perform prediction & map back to original space...
     y2_pred_map <- RF_predict(x_train = X2, y_train = y2, x_test = X2_map, y_lims = data_lims, 
                               n_tree = 200, m_try = 0.4, random_seed = seed)
-    y2_cdf  <- get_dist_est(y2, sample_size = size, x_range = "unit", dist_method = method, grid_size = 1e3)
+    y2_cdf  <- get_dist_est(y2, sample_size = size, x_range = "unit", dist_method = method, grid_size = 1e3, random_seed = seed)
     
-    y1_pred <- dist_match(y2_pred_map, ref = y1, src_dist = y2_cdf, match_method = method, samp_size = size, lims = data_lims)
+    y1_pred <- dist_match(y2_pred_map, ref = y1, src_dist = y2_cdf, match_method = method, samp_size = size, 
+                          lims = data_lims, rand_seed = seed)
     y1_pred <- confined(y1_pred, lims = data_lims);      names(y1_pred) <- names(y2_pred_map)
     
     

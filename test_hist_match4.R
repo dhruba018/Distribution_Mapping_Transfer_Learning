@@ -15,6 +15,7 @@ library(ggplot2)
 library(ggpubr)
 library(randomForest)
 library(ks)
+library(progress)
 
 
 #### Functions...
@@ -25,17 +26,17 @@ printf <- function(..., end = "\n") {
     cat(..., end)
 }
 
-norm01    <- function(z) { z <- if (min(z)) z - min(z);   z <- z / max(z);  z }
+norm01    <- function(z) { z <- if (min(z)) z - min(z) else z;   z <- z / max(z);  z }
 norm.data <- function(df) as.data.frame(apply(df, MARGIN = 2, norm01))
 
 
 ### Pick top genes...
-get.top.genes <- function(ranks, m.top = 150, print.opt = FALSE) {
+get.top.genes <- function(ranks, m.top = 150, verbose = FALSE) {
   
   ## Initialization...
   nI <- 0;        nGN <- 300
   gene.rank <- intersect(ranks[1:nGN, 1], ranks[1:nGN, 2])
-  m  <- length(gene.rank);     m0 <- if (print.opt) m
+  m  <- length(gene.rank);     m0 <- if (verbose) m
   
   ## Run iterations...
   while(m < m.top) {
@@ -46,7 +47,7 @@ get.top.genes <- function(ranks, m.top = 150, print.opt = FALSE) {
   gene.rank <- sort(gene.rank, decreasing = FALSE)    # Sort ranks
   
   ## Print results...
-  if (print.opt)
+  if (verbose)
     printf("#top genes chosen = %d (nGN = %d, nI = %d, m0 = %d)", m, nGN, nI, m0)
   
   gene.rank
@@ -116,7 +117,7 @@ run <- function(q.run, random.seed, method.opt) {
 # random.seed <- 4321            # 0, 654321, 4321
 # method.opt <- "dens"           # hist, dens
 
-source("RF_predict.R")
+source("RF_predict.R")          # Random forest modeling
 
 perf.mes <- c("NRMSE", "NMAE", "SCC")  
 results.all <- list(data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()), 
@@ -125,12 +126,17 @@ results.all <- list(data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = d
                     "genes" = data.frame("num.genes" = double()))
 names(results.all)[1:3] <- perf.mes
 
+pb <- progress_bar$new(format = "  running [:bar] :percent eta: :eta", total = length(q.run), clear = FALSE, width = 64)
+pb$tick(0)
+
 for (k in q.run) {
+  
+  pb$tick()
   
   ## Select biomarker... 
   bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
   ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
-  gnRank   <- get.top.genes(ranks[, 2:3], m.top = 150, print.opt = FALSE);      m <- length(gnRank)
+  gnRank   <- get.top.genes(ranks[, 2:3], m.top = 15, verbose = FALSE);      m <- length(gnRank)
   
   
   ## Prepare datasets...
@@ -151,7 +157,7 @@ for (k in q.run) {
   # Y1.pred.base[Y1.pred.base < 0] <- 0;      Y1.pred.base[Y1.pred.base > 1] <- 1
   # 
   Y1.pred.base <- RF_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), 
-                             n_tree = 200, m_try = 0.4, rand_seed = random.seed)
+                             n_tree = 200, m_try = 0.4, random_seed = random.seed)
   
   
   ## Generate & save results...
@@ -186,8 +192,8 @@ results.all
 
 # source("dist.match.trans.learn.R")      ## Load function
 source("dist_match_trans_learn.R")      ## Load function
-results.all <- run(q.run = 1:q, random.seed = 4321, method.opt = "dens")
-# c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
+results.all <- run(q.run = 1:q, random.seed = 7531, method.opt = "dens")
+c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
 
 # ## Write in temporary file...

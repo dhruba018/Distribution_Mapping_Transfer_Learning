@@ -140,6 +140,36 @@ defn = ['Row 1, 4 - {\color[rgb]{0,0,0.8}TCGA-LUAD}, Row 2, 5 - {\color[rgb]{0,0
 figure(hb),          suptitle([{'\bfBiomarker Distributions for {\color[rgb]{0.5,0,0}NSCLC} CLs'}; {defn}])
 
 
+%% Save data...
+XdataTable1 = array2table(Xdata1, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', samples1);
+XdataTable2 = array2table(Xdata2, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', samples2);
+XdataTable3 = array2table(Xdata3, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', lungCL3);
+XdataTable4 = array2table(Xdata4, 'VariableNames', XgeneSet.Hugo_Symbol, 'RowNames', lungCL4);
+
+YdataTable1 = array2table(Ydata1, 'VariableNames', biomarkers, 'RowNames', samples1);
+YdataTable2 = array2table(Ydata2, 'VariableNames', biomarkers, 'RowNames', samples2);
+YdataTable3 = array2table(Ydata3, 'VariableNames', biomarkers, 'RowNames', lungCL3);
+YdataTable4 = array2table(Ydata4, 'VariableNames', biomarkers, 'RowNames', lungCL4);
+
+SavePath = '.\\Data\\';
+writetable(XdataTable1, sprintf([SavePath, 'LUAD_gene_expression_TCGA_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(XdataTable2, sprintf([SavePath, 'LUSC_gene_expression_TCGA_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(XdataTable3, sprintf([SavePath, 'NSCLC_gene_expression_CCLE_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(XdataTable4, sprintf([SavePath, 'NSCLC_gene_expression_GDSC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable1, sprintf([SavePath, 'LUAD_biomarker_expression_TCGA_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable2, sprintf([SavePath, 'LUSC_biomarker_expression_TCGA_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable3, sprintf([SavePath, 'NSCLC_biomarker_expression_CCLE_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+writetable(YdataTable4, sprintf([SavePath, 'NSCLC_biomarker_expression_GDSC_%s.txt'], strrep(date, '-', '_')),... 
+                'Delimiter', '\t', 'WriteRowNames', true, 'WriteVariableNames', true)
+
+
 %% Pairwise dependency...
 % Gene-pair combinations...
 bmPairs = nchoosek(1:q, 2);       nPairsBM = size(bmPairs, 1);
@@ -472,6 +502,16 @@ FEATFILENAME = 'relieff_ranked_genes_nsclc_TCG.mat';
 save(FEATFILENAME, 'rank1', 'rank2', 'rank3', 'rank4')
 toc
 
+% Save files... 
+SavePath = '.\\Data\\';
+WriteTableForRanks = @(RankArray, FileName) writetable(array2table(RankArray, 'VariableNames', biomarkers,... 
+                                         'RowNames', XgeneSet.Hugo_Symbol), [SavePath, FileName],... 
+                                         'Delimiter', '\t', 'WriteVariableNames', true, 'WriteRowNames', true);
+WriteTableForRanks(rank1, sprintf('LUAD_biomarker_ranks_TCGA_%s.txt', strrep(date, '-', '_')))
+WriteTableForRanks(rank2, sprintf('LUSC_biomarker_ranks_TCGA_%s.txt', strrep(date, '-', '_')))
+WriteTableForRanks(rank3, sprintf('NSCLC_biomarker_ranks_CCLE_%s.txt', strrep(date, '-', '_')))
+WriteTableForRanks(rank4, sprintf('NSCLC_biomarker_ranks_GDSC_%s.txt', strrep(date, '-', '_')))
+
 
 %% Transfer Learning...
 % Load RELEIFF features...
@@ -562,9 +602,9 @@ for chosenBMidx = qn
                                             getenv('username'));
     if ~mod(dsChoice, 2),	 dsChar = {'_Rev', strrep(dsFlag{1}, ' + ', '_'), 'Target'};
     else,                              dsChar = {'', strrep(dsFlag{2}, ' + ', '_'), 'Source'};        end
-    datadir = sprintf('NSCLC_%s_%s', dsChar{3}, dsChar{2});
-    filename = sprintf('Data_BM_%d_f%d_%s%s_NSCLC.mat', chosenBMidx, m_opt, dsChar{2}, dsChar{1});
-    save(fullfile(datapath, datadir, filename), 'X1', 'X2', 'Y1', 'Y2')
+    % datadir = sprintf('NSCLC_%s_%s', dsChar{3}, dsChar{2});
+    % filename = sprintf('Data_BM_%d_f%d_%s%s_NSCLC.mat', chosenBMidx, m_opt, dsChar{2}, dsChar{1});
+    % save(fullfile(datapath, datadir, filename), 'X1', 'X2', 'Y1', 'Y2')
     
     % Distributions...
     figure(10)

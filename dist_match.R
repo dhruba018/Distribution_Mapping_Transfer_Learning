@@ -6,16 +6,20 @@
 ## Dependency_own: lambda_functions 
 ################################################################################
 
-dist_match <- function(src, ref, src_dist, ref_dist, lims, match_method = "hist", samp_size = 1e6) {
+dist_match <- function(src, ref, src_dist, ref_dist, lims, match_method = "hist", samp_size = 1e6, rand_seed = NULL) {
   
   ## Get distributions...
   source("get_dist_est.R")
   
-  if (missing(ref_dist)) 
-    ref_dist <- get_dist_est(ref, sample_size = samp_size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
+  if (missing(ref_dist)) {
+    ref_dist <- get_dist_est(ref, sample_size = samp_size, x_range = "unit", dist_method = match_method, 
+                             grid_size = 1e3, random_seed = rand_seed)
+  }
   
-  if (missing(src_dist))  
-    src_dist <- get_dist_est(src, sample_size = samp.size, x_range = "unit", dist_method = match_method, grid_size = 1e3)
+  if (missing(src_dist)) {
+    src_dist <- get_dist_est(src, sample_size = samp.size, x_range = "unit", dist_method = match_method, 
+                             grid_size = 1e3, random_seed = rand_seed)
+  }
   
   
   ## Mapping parameters...
