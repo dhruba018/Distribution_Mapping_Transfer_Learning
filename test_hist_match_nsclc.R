@@ -1,13 +1,12 @@
 # rm(list = ls())
 
 ## Set-up system path... 
-info <- Sys.getenv(c("USERNAME", "HOMEPATH"))
-if (info["USERNAME"] == "SRDhruba"){
-  info["DIRPATH"] <- sprintf("%s\\Dropbox%s\\ResearchWork\\Rtest\\", info["HOMEPATH"], " (Personal)")
+PATH <- if (Sys.getenv("USERNAME") == "SRDhruba") {
+  "\\Users\\SRDhruba\\Dropbox (Personal)\\ResearchWork\\Rtest\\"
 } else {
-  info["DIRPATH"] <- sprintf("%s\\Dropbox%s\\ResearchWork\\Rtest\\", info["HOMEPATH"], "")
+  sprintf("%s\\Dropbox\\ResearchWork\\Rtest\\", Sys.getenv("HOMEPATH"))
 }
-setwd(info["DIRPATH"]);       cat("Current system path = ", getwd(), "\n")
+setwd(PATH);       cat("Current system path = ", getwd(), "\n")
 
 
 ## Packages...
@@ -110,7 +109,7 @@ biomarkers <- colnames(Ydata1);       q <- length(biomarkers)
 ## Get results for all biomarkers...
 # source("dist_match_trans_learn.R")      ## Load function
 
-run <- function(q.run, random.seed, method.opt) {
+run <- function(q.run, n.feat, random.seed, method.opt) {
   # q.run <- 1                     # drug idx
   # random.seed <- 4321            # 0, 654321, 4321
   # method.opt <- "dens"           # hist, dens
@@ -133,7 +132,7 @@ run <- function(q.run, random.seed, method.opt) {
     ## Select biomarker... 
     bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
     ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen], rank4[, bmChosen])
-    gnRank   <- get.top.genes(ranks[, 3:4], m.top = 50, verbose = FALSE);      m <- length(gnRank)
+    gnRank   <- get.top.genes(ranks[, 3:4], m.top = n.feat, verbose = FALSE);      m <- length(gnRank)
     
     
     ## Prepare datasets...
@@ -160,7 +159,7 @@ run <- function(q.run, random.seed, method.opt) {
                           "BL"      = calc.perf(Y1, Y1.pred.base, measures = perf.mes), row.names = perf.mes)
     
     ## Print option...
-    if (length(q.run) == 1) { printf("\nResults for %s = ", bmChosen);     print(results) }
+    if (length(q.run) == 1) { printf("\nResults for %s using top %d features = ", bmChosen, n.feat);     print(results) }
     
     results.all[[perf.mes[1]]][bmChosen, ] <- results[perf.mes[1], ]
     results.all[[perf.mes[2]]][bmChosen, ] <- results[perf.mes[2], ]
@@ -179,13 +178,13 @@ run <- function(q.run, random.seed, method.opt) {
   rownames(results.all$table) <- perf.mes
   
   ## Print options...
-  if (length(q.run) > 1) { printf("\nResults summary = ");    print(results.all$table) }
+  if (length(q.run) > 1) { printf("\nResults summary for top %d features = ", n.feat);    print(results.all$table) }
   
   results.all
 }
 
 source("dist_match_trans_learn.R")      ## Load function
-results.all <- run(q.run = 1:q, random.seed = 97531, method.opt = "hist")
+results.all <- run(q.run = 1:q, n.feat = 50, random.seed = 97531, method.opt = "hist")
 c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
 

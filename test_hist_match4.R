@@ -112,7 +112,7 @@ biomarkers <- colnames(Ydata1);       q <- length(biomarkers)
 # source("dist.match.trans.learn.R")      ## Load function
 # source("dist_match_trans_learn.R")      ## Load function
 
-run <- function(q.run, random.seed, method.opt) {
+run <- function(q.run, n.feat, random.seed, method.opt) {
 # q.run <- 1                     # drug idx
 # random.seed <- 4321            # 0, 654321, 4321
 # method.opt <- "dens"           # hist, dens
@@ -136,7 +136,7 @@ for (k in q.run) {
   ## Select biomarker... 
   bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
   ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
-  gnRank   <- get.top.genes(ranks[, 2:3], m.top = 15, verbose = FALSE);      m <- length(gnRank)
+  gnRank   <- get.top.genes(ranks[, 2:3], m.top = n.feat, verbose = FALSE);      m <- length(gnRank)
   
   
   ## Prepare datasets...
@@ -166,7 +166,7 @@ for (k in q.run) {
                         "BL"      = calc.perf(Y1, Y1.pred.base, measures = perf.mes), row.names = perf.mes)
   
   ## Print option...
-  if (length(q.run) == 1) { printf("\nResults for %s = ", bmChosen);     print(results) }
+  if (length(q.run) == 1) { printf("\nResults for %s using top %d features = ", bmChosen, n.feat);     print(results) }
   
   results.all[[perf.mes[1]]][bmChosen, ] <- results[perf.mes[1], ]
   results.all[[perf.mes[2]]][bmChosen, ] <- results[perf.mes[2], ]
@@ -185,14 +185,14 @@ results.all[["table"]] <- rbind(results.all[[perf.mes[1]]]["Mean", ], results.al
 rownames(results.all$table) <- perf.mes
 
 ## Print options...
-if (length(q.run) > 1) { printf("\nResults summary = ");    print(results.all$table) }
+if (length(q.run) > 1) { printf("\nResults summary for top %d features = ", n.feat);    print(results.all$table) }
 
 results.all
 }
 
 # source("dist.match.trans.learn.R")      ## Load function
 source("dist_match_trans_learn.R")      ## Load function
-results.all <- run(q.run = 1:q, random.seed = 7531, method.opt = "dens")
+results.all <- run(q.run = 1:q, n.feat = 50, random.seed = 97531, method.opt = "dens")
 c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
 

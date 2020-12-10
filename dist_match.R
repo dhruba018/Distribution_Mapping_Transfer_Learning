@@ -3,9 +3,30 @@
 ## continuous density estimates 
 ## 
 ## Dependency: stats, ks 
-## Dependency_own: lambda_functions 
+## Dependency_own: lambda_functions, match_func 
 ################################################################################
 
+source("lambda_functions.R")
+
+
+## Define matching function...
+match_func <- function(knots, vals, new_vals, lims) {
+  
+  ## Limits for function inputs...
+  if (missing(lims)) 
+    lims <- c(min(knots), max(knots))
+  
+  ## Inverse CDF mapping...
+  map <- stats::approxfun(x = vals, y = knots, yleft = lims[1], yright = lims[2], method = "linear", ties = "ordered", rule = 2)
+  
+  ## Get matched values...
+  new_knots <- confined(map(new_vals), lims)
+  new_knots
+  
+}
+
+
+## Distribution matching for two CDFs...
 dist_match <- function(src, ref, src_dist, ref_dist, lims, match_method = "hist", samp_size = 1e6, rand_seed = NULL) {
   
   ## Get distributions...
@@ -40,7 +61,7 @@ dist_match <- function(src, ref, src_dist, ref_dist, lims, match_method = "hist"
   }
   
   ## Perform mapping...
-  source("match_func.R")
+  # source("match_func.R")
   
   if (missing(lims))
     lims <- c(min(src), max(src))

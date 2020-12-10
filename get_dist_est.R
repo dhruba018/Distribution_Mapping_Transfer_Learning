@@ -26,8 +26,8 @@ get_dist_est <- function(x, sample_size = 1e6, dist_method = "hist", size_tol = 
     } 
     
     else if (dist_method == "dens") {           # Use kernel density
-        if (!require(ks))                       # Load package
-            library(ks)
+        # if (!require(ks))                       # Load package
+        #     library(ks)
         
         bw <- ks::hscv(x, nstage = 2, binned = TRUE, bgridsize = grid_size * 10)
         
