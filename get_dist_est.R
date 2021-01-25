@@ -22,7 +22,7 @@ get_dist_est <- function(x, sample_size = 1e6, dist_method = "hist", size_tol = 
     dist_method <- tolower(dist_method)
     
     if (dist_method == "hist") {                # Use histogram
-        x_cdf <- stats::ecdf(xx, ...)
+        x_cdf <- stats::ecdf(xx)
     } 
     
     else if (dist_method == "dens") {           # Use kernel density

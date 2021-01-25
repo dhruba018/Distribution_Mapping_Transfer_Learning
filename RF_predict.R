@@ -4,9 +4,9 @@
 ## Dependency_own: lambda_functions 
 ################################################################################
 
-RF_predict <- function(x_train, y_train, x_test, y_lims, n_tree = 300, m_try = 0.3333, random_seed = NULL, ...) {
+RF_predict <- function(x_train, y_train, x_test, y_lims, optimize = FALSE, n_tree = 300, m_try = 0.3333, random_seed = NULL, ...) {
     
-    source("lambda_functions.R")
+    source("C:/Users/SRDhruba/Dropbox (Personal)/ResearchWork/Rtest/lambda_functions.R")
     
     ## Initital checks...
     # if (!require(randomForest))                 # Load package
@@ -22,10 +22,28 @@ RF_predict <- function(x_train, y_train, x_test, y_lims, n_tree = 300, m_try = 0
     ## Define model & perform prediction...
     set.seed(random_seed)                       # For reproducibility
     
-    m_try  <- round(m_try * ncol(x_train))
-    Forest <- randomForest::randomForest(x = x_train, y = y_train, ntree = n_tree, mtry = m_try, replace = TRUE, ...)
+    model_train <- function(x, y, method = "rf") {
+        ctrl <- caret::trainControl(method = "cv", number = 10, search = "random")
+        na <- which(is.na(y))
+        if(length(na) > 0) {
+            x <- as.matrix(x[-na,]);    y <- y[-na]
+        } else {
+            x <- as.matrix(x)
+        }
+        # print(dim(x))
+        Tune <- caret::train(x, y, method = method, tuneLength = 30, trControl = ctrl, preProc = NULL)
+        # c("center", "scale", "medianImpute"))
+        return(Tune)
+    }
     
-    y_pred <- confined(predict(Forest, x_test), lims = y_lims)
+    if (optimize) {
+        Forest <- model_train(x = x_train, y = y_train, method = "rf")
+    } else {
+        m_try  <- round(m_try * ncol(x_train))
+        Forest <- randomForest::randomForest(x = x_train, y = y_train, ntree = n_tree, mtry = m_try, replace = TRUE, ...)
+    }
+    
+    y_pred <- confined(stats::predict(Forest, x_test), lims = y_lims)
     y_pred
     
 }

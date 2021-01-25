@@ -192,7 +192,7 @@ results.all
 
 # source("dist.match.trans.learn.R")      ## Load function
 source("dist_match_trans_learn.R")      ## Load function
-results.all <- run(q.run = 1:q, n.feat = 50, random.seed = 97531, method.opt = "dens")
+results.all <- run(q.run = 1:q, n.feat = 50, random.seed = 97531, method.opt = "hist")
 c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
 
 
