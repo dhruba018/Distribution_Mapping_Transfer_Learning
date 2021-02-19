@@ -7,4 +7,5 @@ This is the repo for distribution mapping based transfer learning.
 * `target_set_mapped`=> predict response in the source space using `Model` => `target_response_pred_source`
 * `target_response_pred_source` => Use `DM` to map back to target space => `target_response_pred`
 
-*Always under work*
+* ---- Always under work ----*
+For the CRAN released R package, take a look at the [DMTL](https://github.com/dhruba018/DMTL) repo. 
