@@ -26,7 +26,7 @@ RF_predict <- function(x_train, y_train, x_test, y_lims, optimize = FALSE, n_tre
         ctrl <- caret::trainControl(method = "cv", number = 10, search = "random")
         na <- which(is.na(y))
         if(length(na) > 0) {
-            x <- as.matrix(x[-na,]);    y <- y[-na]
+            x <- as.matrix(x[-na, ]);    y <- y[-na]
         } else {
             x <- as.matrix(x)
         }

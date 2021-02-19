@@ -1,12 +1,13 @@
 # rm(list = ls())
 
 ## Set-up system path...
-PATH <- if (Sys.getenv("USERNAME") == "SRDhruba") {
-  "\\Users\\SRDhruba\\Dropbox (Personal)\\ResearchWork\\Rtest\\"
+info <- Sys.getenv(c("USERNAME", "HOMEPATH"))
+if (info["USERNAME"] == "SRDhruba"){
+  info["DIRPATH"] <- sprintf("%s\\Dropbox (Personal)\\ResearchWork\\Rtest\\", info["HOMEPATH"])
 } else {
-  sprintf("%s\\Dropbox\\ResearchWork\\Rtest\\", Sys.getenv("HOMEPATH"))
+  info["DIRPATH"] <- sprintf("%s\\Dropbox\\ResearchWork\\Rtest\\", info["HOMEPATH"])
 }
-setwd(PATH);       cat("Current system path = ", getwd(), "\n")
+setwd(info["DIRPATH"]);       cat("Current system path = ", getwd(), "\n")
 
 
 ## Packages...
@@ -89,37 +90,29 @@ calc.perf <- function(y, y.pred, measures = c("NRMSE", "NMAE", "SCC")) {
 
 
 #### Read tumor-cell line data...
-Xdata1 <- read.table("Data/LUAD_gene_expression_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Xdata2 <- read.table("Data/LUSC_gene_expression_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Xdata3 <- read.table("Data/NSCLC_gene_expression_CCLE_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Xdata4 <- read.table("Data/NSCLC_gene_expression_GDSC_06_Dec_2020.txt", sep = "\t", header = TRUE)
+Xdata1 <- read.table("Data/BRCA_gene_expression_METABRIC_26_Oct_2020.txt", sep = "\t", header = TRUE)
+Xdata2 <- read.table("Data/BRCA_gene_expression_CCLE_26_Oct_2020.txt", sep = "\t", header = TRUE)
+Xdata3 <- read.table("Data/BRCA_gene_expression_GDSC_26_Oct_2020.txt", sep = "\t", header = TRUE)
 
-Ydata1 <- read.table("Data/LUAD_biomarker_expression_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Ydata2 <- read.table("Data/LUSC_biomarker_expression_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Ydata3 <- read.table("Data/NSCLC_biomarker_expression_CCLE_06_Dec_2020.txt", sep = "\t", header = TRUE)
-Ydata4 <- read.table("Data/NSCLC_biomarker_expression_GDSC_06_Dec_2020.txt", sep = "\t", header = TRUE)
+Ydata1 <- read.table("Data/BRCA_biomarker_expression_METABRIC_26_Oct_2020.txt", sep = "\t", header = TRUE)
+Ydata2 <- read.table("Data/BRCA_biomarker_expression_CCLE_26_Oct_2020.txt", sep = "\t", header = TRUE)
+Ydata3 <- read.table("Data/BRCA_biomarker_expression_GDSC_26_Oct_2020.txt", sep = "\t", header = TRUE)
 
-rank1 <- read.table("Data/LUAD_biomarker_ranks_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-rank2 <- read.table("Data/LUSC_biomarker_ranks_TCGA_06_Dec_2020.txt", sep = "\t", header = TRUE)
-rank3 <- read.table("Data/NSCLC_biomarker_ranks_CCLE_06_Dec_2020.txt", sep = "\t", header = TRUE)
-rank4 <- read.table("Data/NSCLC_biomarker_ranks_GDSC_06_Dec_2020.txt", sep = "\t", header = TRUE)
+rank1 <- read.table("Data/BRCA_biomarker_ranks_METABRIC_27_Oct_2020.txt", sep = "\t", header = TRUE)
+rank2 <- read.table("Data/BRCA_biomarker_ranks_CCLE_27_Oct_2020.txt", sep = "\t", header = TRUE)
+rank3 <- read.table("Data/BRCA_biomarker_ranks_GDSC_27_Oct_2020.txt", sep = "\t", header = TRUE)
 
 biomarkers <- colnames(Ydata1);       q <- length(biomarkers)
 
 
 ## Get results for all biomarkers...
-# source("dist_match_trans_learn.R")      ## Load function
-
-run <- function(q.run, n.feat, random.seed, density.opt) {
-  # q.run <- 1                     # drug idx
-  # random.seed <- 4321            # 0, 654321, 4321
-  # method.opt <- "dens"           # hist, dens
-
-  ## Save performance measures...
+run <- function(q.run, n.feat, random.seed, density.opt = FALSE, model = "RF", optimize = FALSE) {
   perf.mes <- c("NRMSE", "NMAE", "PCC", "SCC")
   results.all <- lapply(perf.mes, function(mes) data.frame("DMTL" = double(), "DMTL_SS" = double(), "BL" = double()))
   names(results.all) <- perf.mes;       results.all[["genes"]] <- data.frame("num.genes" = double())
 
+
+  ## Prints progress...
   pb <- progress_bar$new(format = "  running [:bar] :percent eta: :eta", total = length(q.run), clear = FALSE, width = 64)
   pb$tick(0)
 
@@ -127,28 +120,38 @@ run <- function(q.run, n.feat, random.seed, density.opt) {
 
     pb$tick()
 
+    # ## When testing for a single drug...
+    # k <- 1;     n.feat <- 150;    density.opt <- FALSE;     random.seed <- 7531
+
     ## Select biomarker...
     bmChosen <- biomarkers[k];      #printf("\nChosen biomarker = %s", bmChosen)
-    ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen], rank4[, bmChosen])
-    gnRank   <- get.top.genes(ranks[, 3:4], m.top = n.feat, verbose = FALSE);      m <- length(gnRank)
+    ranks    <- cbind(rank1[, bmChosen], rank2[, bmChosen], rank3[, bmChosen])
+    gnRank   <- get.top.genes(ranks[, 2:3], m.top = n.feat, verbose = FALSE);      m <- length(gnRank)
 
 
     ## Prepare datasets...
-    X1 <- rbind(Xdata1[, gnRank], Xdata2[, gnRank]);              X2 <- rbind(Xdata3[, gnRank], Xdata4[, gnRank])
-    Y1 <- norm01(c(Ydata1[, bmChosen], Ydata2[, bmChosen]));      Y2 <- norm01(c(Ydata3[, bmChosen], Ydata4[, bmChosen]))
+    X1 <- Xdata1[, gnRank];               X2 <- rbind(Xdata2[, gnRank], Xdata3[, gnRank])
+    Y1 <- norm01(Ydata1[, bmChosen]);     Y2 <- norm01(c(Ydata2[, bmChosen], Ydata3[, bmChosen]))
+    names(Y1) <- rownames(X1);            names(Y2) <- rownames(X2)
 
 
     ## DMTL model...
-    prediction <- DMTL(target_set = list("X" = X1, "y" = Y1), source_set = list("X" = X2, "y" = Y2),
-                       use_density = density.opt, random_seed = random.seed, all_pred = TRUE)
+    prediction <- DMTL(target_set = list("X" = X1, "y" = Y1), source_set = list("X" = X2, "y" = Y2), pred_model = model,
+                       model_optimize = optimize, use_density = density.opt, random_seed = random.seed, all_pred = TRUE)
     Y1.pred <- prediction$target;     Y1.pred.src <- prediction$source
 
 
     ## Baseline model...
-    # source("RF_predict.R")          # Random forest modeling
-
-    Y1.pred.base <- RF_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), lims = c(0, 1),
-                               n_tree = 200, m_try = 0.4, seed = random.seed)
+    Y1.pred.base <- if (model == "RF") {
+      RF_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), lims = c(0, 1), optimize = optimize,
+                 n_tree = 200, m_try = 0.4, seed = random.seed)
+    } else if (model == "SVM") {
+      SVM_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), lims = c(0, 1), optimize = optimize,
+                  kernel = "rbf", C = 2, eps = 0.01, kpar = list(sigma = 0.1), seed = random.seed)
+    } else if (model == "EN") {
+      EN_predict(x_train = norm.data(X2), y_train = Y2, x_test = norm.data(X1), lims = c(0, 1), optimize = optimize,
+                 alpha = 0.8, seed = random.seed)
+    }
 
 
     ## Generate & save results...
@@ -176,11 +179,21 @@ run <- function(q.run, n.feat, random.seed, density.opt) {
   results.all
 }
 
-# source("dist_match_trans_learn.R")      ## Load function
+## Try out different models...
+results.all.rf  <- run(q.run = 1:q, n.feat = 150, random.seed = 7531, density.opt = FALSE, model = "RF",  optimize = FALSE)
+results.all.svm <- run(q.run = 1:q, n.feat = 150, random.seed = 7531, density.opt = FALSE, model = "SVM", optimize = FALSE)
+results.all.en  <- run(q.run = 1:q, n.feat = 150, random.seed = 7531, density.opt = FALSE, model = "EN",  optimize = FALSE)
 
-results.all <- run(q.run = 1:q, n.feat = 150, random.seed = 13579, density.opt = FALSE)
 
-c(sum(results.all$NRMSE$DMTL >= 1), sum(results.all$NMAE$DMTL >= 1), sum(abs(results.all$SCC$DMTL) <= 0.2))
-
+# ## Write in temporary file...
+# write.in.file <- function() {
+# write.table(results.all$NRMSE, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", row.names = TRUE, col.names = TRUE)
+# write.table(results.all$NMAE, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", append = TRUE, row.names = TRUE, col.names = TRUE)
+# write.table(results.all$SCC, file = sprintf("results_temp_%s.csv", format(Sys.Date(), "%d_%b_%Y")),
+#             sep = "\t", append = TRUE, row.names = TRUE, col.names = TRUE)
+# }
+# write.in.file()
 
 

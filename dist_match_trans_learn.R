@@ -6,7 +6,7 @@
 ## Author: SR Dhruba, Nov 2020
 ################################################################################
 
-DMTL <- function(target_set, source_set, method = "hist", size = 1e3, seed = NULL, pred_all = FALSE) {
+DMTL <- function(target_set, source_set, method = "hist", size = 1e3, seed = NULL, optimize = FALSE, pred_all = FALSE) {
     
     ## Initial check...
     if (ncol(target_set[["X"]]) != ncol(source_set[["X"]]))
@@ -44,8 +44,12 @@ DMTL <- function(target_set, source_set, method = "hist", size = 1e3, seed = NUL
     
     
     ## Perform prediction & map back to original space...
-    y2_pred_map <- RF_predict(x_train = X2, y_train = y2, x_test = X2_map, y_lims = data_lims, 
-                              n_tree = 200, m_try = 0.4, random_seed = seed)
+    if (optimize) {
+        y2_pred_map <- RF_predict(x_train = X2, y_train = y2, x_test = X2_map, y_lims = data_lims, optimize = TRUE)
+    } else { 
+        y2_pred_map <- RF_predict(x_train = X2, y_train = y2, x_test = X2_map, y_lims = data_lims, 
+                                  n_tree = 200, m_try = 0.4, random_seed = seed)
+    }
     y2_cdf  <- get_dist_est(y2, sample_size = size, x_range = "unit", dist_method = method, grid_size = 1e3, random_seed = seed)
     
     y1_pred <- dist_match(y2_pred_map, ref = y1, src_dist = y2_cdf, match_method = method, samp_size = size, 
