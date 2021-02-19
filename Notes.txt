@@ -1,0 +1,13 @@
+R packages
+
+Acknowlegement
+* RStoolbox: https://cran.r-project.org/web/packages/RStoolbox/RStoolbox.pdf 
+	     https://github.com/bleutner/RStoolbox/blob/master/R/histMatch.R
+
+
+Citation
+* ks: https://cran.r-project.org/web/packages/ks/ks.pdf
+* randomForest: https://cran.r-project.org/web/packages/randomForest/randomForest.pdf
+
+
+
