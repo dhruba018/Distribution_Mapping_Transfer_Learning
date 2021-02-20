@@ -9,4 +9,4 @@ This is the repo for distribution mapping based transfer learning.
 
 *---- Always under work ----*
 
-For the CRAN released R package, take a look at the [DMTL](https://github.com/dhruba018/DMTL) repo. 
+For the CRAN release R package, take a look at the [DMTL](https://github.com/dhruba018/DMTL) repo. 
